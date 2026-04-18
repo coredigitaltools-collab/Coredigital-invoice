@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Core Digital Tools — Invoice Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --purple:#534AB7;--purple-light:#EEEDFE;--purple-mid:#CECBF6;
+  --coral:#E8735A;--coral-light:#FAECE7;
+  --teal:#1D9E75;--teal-light:#E1F5EE;
+  --ink:#1A1530;--muted:#888780;--bdr:#E8E4FF;--bg:#F7F4FF;--surf:#fff;
+  --rad:14px;--shd:0 2px 16px rgba(83,74,183,.10);
+  --sans:'DM Sans',sans-serif;--serif:'DM Serif Display',serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:100vh;}
+.app{max-width:860px;margin:0 auto;padding:24px 16px 60px;}
+
+/* HEADER */
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;}
+.logo{font-family:var(--serif);font-size:22px;color:var(--purple);}
+.logo span{color:var(--coral);}
+.btn-gen{background:linear-gradient(135deg,var(--purple),#7F77DD);color:#fff;border:none;border-radius:10px;padding:12px 24px;font-family:var(--sans);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;transition:opacity .2s;}
+.btn-gen:hover{opacity:.9;}
+
+/* SECTIONS */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.card{background:var(--surf);border-radius:var(--rad);padding:20px;margin-bottom:16px;box-shadow:var(--shd);}
+.card h3{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
+
+/* FORM */
+.fg{margin-bottom:12px;}
+.fg label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;}
+.fg input,.fg select,.fg textarea{width:100%;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:10px;font-family:var(--sans);font-size:14px;color:var(--ink);background:var(--bg);outline:none;transition:border-color .2s;}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--purple);}
+.fg textarea{resize:vertical;min-height:60px;}
+
+/* LINE ITEMS */
+.items-table{width:100%;border-collapse:collapse;}
+.items-table th{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:8px 10px;text-align:left;border-bottom:2px solid var(--bdr);}
+.items-table th:last-child{text-align:right;}
+.items-table td{padding:8px 6px;vertical-align:top;}
+.items-table td input{width:100%;padding:8px 10px;border:1.5px solid var(--bdr);border-radius:8px;font-family:var(--sans);font-size:13px;color:var(--ink);background:var(--bg);outline:none;}
+.items-table td input:focus{border-color:var(--purple);}
+.items-table .amt{font-family:var(--serif);font-size:14px;color:var(--purple);text-align:right;padding-right:4px;padding-top:10px;white-space:nowrap;}
+.del-row{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:6px;border-radius:6px;line-height:1;}
+.del-row:hover{color:#E24B4A;background:var(--coral-light);}
+.add-item{display:flex;align-items:center;gap:6px;margin-top:12px;background:none;border:1.5px dashed var(--bdr);border-radius:10px;padding:10px 16px;color:var(--purple);font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;width:100%;justify-content:center;transition:all .2s;}
+.add-item:hover{background:var(--purple-light);border-color:var(--purple);}
+
+/* TOTALS */
+.totals{margin-top:16px;}
+.tot-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bdr);font-size:14px;}
+.tot-row:last-child{border-bottom:none;}
+.tot-row .lbl{color:var(--muted);}
+.tot-row .val{font-weight:600;color:var(--ink);}
+.tot-total{background:linear-gradient(135deg,var(--purple),#7F77DD);border-radius:10px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-top:10px;}
+.tot-total .lbl{color:rgba(255,255,255,.8);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.tot-total .val{font-family:var(--serif);font-size:22px;color:#fff;}
+
+/* STATUS BADGE */
+.status-wrap{display:flex;gap:8px;flex-wrap:wrap;}
+.sbadge{padding:8px 16px;border-radius:20px;border:1.5px solid var(--bdr);background:var(--bg);font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);transition:all .15s;font-family:var(--sans);}
+.sbadge.on.unpaid{background:#FAEEDA;border-color:#BA7517;color:#854F0B;}
+.sbadge.on.paid{background:var(--teal-light);border-color:var(--teal);color:var(--teal);}
+.sbadge.on.partial{background:var(--purple-light);border-color:var(--purple);color:var(--purple);}
+
+/* HISTORY */
+.hist-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--bdr);}
+.hist-item:last-child{border-bottom:none;}
+.hist-dot{width:36px;height:36px;border-radius:50%;background:var(--purple-light);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.hist-info{flex:1;}
+.hist-info .nm{font-size:14px;font-weight:600;color:var(--ink);}
+.hist-info .mt{font-size:12px;color:var(--muted);margin-top:2px;}
+.hist-amt{font-family:var(--serif);font-size:16px;color:var(--purple);flex-shrink:0;}
+.del-hist{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;}
+.del-hist:hover{color:#E24B4A;}
+
+/* PREVIEW BADGE */
+.inv-no-badge{display:inline-block;background:var(--purple-light);color:var(--purple);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;margin-bottom:4px;}
+
+/* RESPONSIVE */
+@media(max-width:600px){
+  .grid2{grid-template-columns:1fr;}
+  .top{flex-direction:column;gap:12px;align-items:flex-start;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div>
+      <div class="logo">Core Digital <span>Tools</span></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px;">Invoice Generator</div>
+    </div>
+    <button class="btn-gen" onclick="generatePDF()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download PDF
+    </button>
+  </div>
+
+  <!-- INV NUMBER + STATUS -->
+  <div class="card">
+    <div class="grid2" style="margin-bottom:0;">
+      <div class="fg">
+        <label>Invoice Number</label>
+        <input id="inv-no" type="text" value="CDT-2026-001" oninput="updateInvNo()">
+      </div>
+      <div class="fg">
+        <label>Status</label>
+        <div class="status-wrap">
+          <button class="sbadge on unpaid" onclick="setStatus('unpaid',this)">Unpaid</button>
+          <button class="sbadge partial" onclick="setStatus('partial',this)">Partial</button>
+          <button class="sbadge paid" onclick="setStatus('paid',this)">Paid</button>
+        </div>
+      </div>
+      <div class="fg">
+        <label>Invoice Date</label>
+        <input id="inv-date" type="date">
+      </div>
+      <div class="fg">
+        <label>Due Date</label>
+        <input id="due-date" type="date">
+      </div>
+    </div>
+  </div>
+
+  <!-- FROM / TO -->
+  <div class="grid2">
+    <div class="card">
+      <h3>From — Your Business</h3>
+      <div class="fg"><label>Business Name</label><input id="biz-name" type="text" value="Core Digital Tools"></div>
+      <div class="fg"><label>Email</label><input id="biz-email" type="text" value="coredigitaltools@gmail.com"></div>
+      <div class="fg"><label>Phone / Location (optional)</label><input id="biz-phone" type="text" placeholder="e.g. Kampala, Uganda"></div>
+    </div>
+    <div class="card">
+      <h3>Bill To — Client</h3>
+      <div class="fg"><label>Client / Company Name</label><input id="cl-name" type="text" value="IMC LTD"></div>
+      <div class="fg"><label>Email</label><input id="cl-email" type="text" value="bukenya@zestsports.store"></div>
+      <div class="fg"><label>Phone / Address (optional)</label><input id="cl-phone" type="text" placeholder="e.g. Kampala, Uganda"></div>
+    </div>
+  </div>
+
+  <!-- LINE ITEMS -->
+  <div class="card">
+    <h3>Line Items</h3>
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th style="width:40%;">Description</th>
+          <th style="width:20%;">Notes</th>
+          <th style="width:8%;">Qty</th>
+          <th style="width:16%;">Unit Price</th>
+          <th style="width:12%;text-align:right;">Amount</th>
+          <th style="width:4%;"></th>
+        </tr>
+      </thead>
+      <tbody id="items-body"></tbody>
+    </table>
+    <button class="add-item" onclick="addItem()">+ Add Line Item</button>
+
+    <!-- TOTALS -->
+    <div class="totals">
+      <div class="tot-row"><span class="lbl">Subtotal</span><span class="val" id="t-sub">UGX 0</span></div>
+      <div class="tot-row">
+        <span class="lbl">Tax
+          <select id="tax-rate" onchange="recalc()" style="border:none;background:none;font-family:var(--sans);font-size:13px;color:var(--muted);cursor:pointer;margin-left:4px;">
+            <option value="0">0%</option>
+            <option value="0.18">18% VAT</option>
+            <option value="0.16">16%</option>
+            <option value="0.1">10%</option>
+          </select>
+        </span>
+        <span class="val" id="t-tax">UGX 0</span>
+      </div>
+      <div class="tot-row"><span class="lbl">Discount</span>
+        <span style="display:flex;align-items:center;gap:6px;">
+          <input id="discount" type="number" min="0" value="0" oninput="recalc()" style="width:80px;padding:5px 8px;border:1.5px solid var(--bdr);border-radius:8px;font-family:var(--sans);font-size:13px;text-align:right;">
+          <span style="font-size:12px;color:var(--muted);">UGX</span>
+        </span>
+      </div>
+      <div class="tot-total">
+        <span class="lbl">Total Due</span>
+        <span class="val" id="t-total">UGX 0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAYMENT + NOTES -->
+  <div class="grid2">
+    <div class="card">
+      <h3>Payment Details</h3>
+      <div class="fg"><label>Currency</label>
+        <select id="currency" onchange="recalc()">
+          <option value="UGX">UGX — Ugandan Shilling</option>
+          <option value="KES">KES — Kenyan Shilling</option>
+          <option value="USD">USD — US Dollar</option>
+          <option value="EUR">EUR — Euro</option>
+          <option value="GBP">GBP — British Pound</option>
+          <option value="NGN">NGN — Nigerian Naira</option>
+        </select>
+      </div>
+      <div class="fg"><label>Payment Instructions</label>
+        <textarea id="pay-inst" rows="3">MTN MoMo: 0765665564</textarea>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Notes / Terms</h3>
+      <div class="fg"><label>Message to Client</label>
+        <textarea id="notes" rows="3">Thank you for your business! Please reference the invoice number when making payment.</textarea>
+      </div>
+      <div class="fg"><label>Terms & Conditions (optional)</label>
+        <textarea id="terms" rows="2" placeholder="e.g. Payment due within 7 days..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- INVOICE HISTORY -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h3 style="margin:0;">Invoice History</h3>
+      <button onclick="saveToHistory()" style="background:var(--purple-light);color:var(--purple);border:none;border-radius:8px;padding:7px 14px;font-family:var(--sans);font-size:12px;font-weight:700;cursor:pointer;">Save to History</button>
+    </div>
+    <div id="history-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">No invoices saved yet. Fill in the form and click Save to History.</div></div>
+  </div>
+</div>
+
+<script>
+const {jsPDF} = window.jspdf;
+let itemCount=0;
+let invStatus='unpaid';
+
+// ── INIT ──
+window.onload=()=>{
+  const today=new Date();
+  const tomorrow=new Date();tomorrow.setDate(today.getDate()+1);
+  document.getElementById('inv-date').value=today.toISOString().split('T')[0];
+  document.getElementById('due-date').value=tomorrow.toISOString().split('T')[0];
+  addItem('Custom Wallet App Setup','One-time build, config & deployment',1,175000);
+  addItem('Monthly Support — Month 1','Bug fixes, updates, onboarding support',1,25000);
+  loadHistory();
+};
+
+function setStatus(s,btn){
+  invStatus=s;
+  document.querySelectorAll('.sbadge').forEach(b=>{b.classList.remove('on');b.classList.remove('unpaid','paid','partial');});
+  btn.classList.add('on',s);
+}
+
+function updateInvNo(){} // live sync handled via value
+
+function getCurrency(){
+  const c=document.getElementById('currency').value;
+  const syms={UGX:'UGX ',KES:'KSh ',USD:'$ ',EUR:'€ ',GBP:'£ ',NGN:'₦ '};
+  return syms[c]||c+' ';
+}
+function fmt(n){return getCurrency()+Math.round(n).toLocaleString('en');}
+
+function addItem(name='',notes='',qty=1,price=0){
+  itemCount++;
+  const id=itemCount;
+  const tbody=document.getElementById('items-body');
+  const tr=document.createElement('tr');
+  tr.id='item-'+id;
+  tr.innerHTML=`
+    <td><input type="text" placeholder="Item description" value="${name}" oninput="recalc()"></td>
+    <td><input type="text" placeholder="Notes (optional)" value="${notes}"></td>
+    <td><input type="number" min="1" value="${qty}" oninput="recalc()" style="text-align:center;"></td>
+    <td><input type="number" min="0" value="${price}" oninput="recalc()" style="text-align:right;"></td>
+    <td class="amt" id="amt-${id}">—</td>
+    <td><button class="del-row" onclick="delItem(${id})">×</button></td>`;
+  tbody.appendChild(tr);
+  recalc();
+}
+
+function delItem(id){
+  const el=document.getElementById('item-'+id);
+  if(el)el.remove();
+  recalc();
+}
+
+function getItems(){
+  const rows=document.querySelectorAll('#items-body tr');
+  return Array.from(rows).map(tr=>{
+    const ins=tr.querySelectorAll('input');
+    const desc=ins[0].value.trim();
+    const notes=ins[1].value.trim();
+    const qty=parseFloat(ins[2].value)||1;
+    const price=parseFloat(ins[3].value)||0;
+    return{id:tr.id,desc,notes,qty,price,total:qty*price};
+  });
+}
+
+function recalc(){
+  const items=getItems();
+  const sub=items.reduce((s,i)=>s+i.total,0);
+  const tax=sub*parseFloat(document.getElementById('tax-rate').value||0);
+  const disc=parseFloat(document.getElementById('discount').value)||0;
+  const total=sub+tax-disc;
+  document.getElementById('t-sub').textContent=fmt(sub);
+  document.getElementById('t-tax').textContent=fmt(tax);
+  document.getElementById('t-total').textContent=fmt(total);
+  items.forEach(it=>{const el=document.getElementById('amt-'+it.id.replace('item-',''));if(el)el.textContent=fmt(it.total);});
+}
+
+// ── HISTORY ──
+function saveToHistory(){
+  const items=getItems();
+  const total=parseFloat(document.getElementById('t-total').textContent.replace(/[^0-9.]/g,''))||0;
+  const rec={
+    id:Date.now(),
+    no:document.getElementById('inv-no').value,
+    client:document.getElementById('cl-name').value,
+    date:document.getElementById('inv-date').value,
+    due:document.getElementById('due-date').value,
+    total,currency:document.getElementById('currency').value,
+    status:invStatus,items
+  };
+  const hist=JSON.parse(localStorage.getItem('cdt_invoices')||'[]');
+  hist.unshift(rec);
+  localStorage.setItem('cdt_invoices',JSON.stringify(hist));
+  loadHistory();
+  // auto-increment invoice number
+  const no=document.getElementById('inv-no').value;
+  const match=no.match(/(\d+)$/);
+  if(match)document.getElementById('inv-no').value=no.replace(/\d+$/,String(parseInt(match[1])+1).padStart(match[1].length,'0'));
+}
+
+function loadHistory(){
+  const hist=JSON.parse(localStorage.getItem('cdt_invoices')||'[]');
+  const el=document.getElementById('history-list');
+  if(hist.length===0){el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">No invoices saved yet.</div>`;return;}
+  el.innerHTML=hist.map(h=>{
+    const sym={UGX:'UGX ',KES:'KSh ',USD:'$ ',EUR:'€ ',GBP:'£ ',NGN:'₦ '}[h.currency]||'';
+    const scolor=h.status==='paid'?'#1D9E75':h.status==='partial'?'#534AB7':'#BA7517';
+    const sbg=h.status==='paid'?'#E1F5EE':h.status==='partial'?'#EEEDFE':'#FAEEDA';
+    return`<div class="hist-item">
+      <div class="hist-dot">🧾</div>
+      <div class="hist-info">
+        <div class="nm">${h.client} <span style="font-size:11px;background:${sbg};color:${scolor};padding:2px 8px;border-radius:10px;font-weight:700;margin-left:4px;">${h.status}</span></div>
+        <div class="mt">${h.no} · Due ${h.due}</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="hist-amt">${sym}${Math.round(h.total).toLocaleString('en')}</div>
+        <button class="del-hist" onclick="delHistory(${h.id})">×</button>
+      </div>
+    </div>`;}).join('');
+}
+
+function delHistory(id){
+  if(!confirm('Remove from history?'))return;
+  const hist=JSON.parse(localStorage.getItem('cdt_invoices')||'[]').filter(h=>h.id!==id);
+  localStorage.setItem('cdt_invoices',JSON.stringify(hist));
+  loadHistory();
+}
+
+// ── PDF GENERATION ──
+function generatePDF(){
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const W=210,H=297,M=16;
+  const sym=getCurrency();
+  const items=getItems();
+  const sub=items.reduce((s,i)=>s+i.total,0);
+  const tax=sub*parseFloat(document.getElementById('tax-rate').value||0);
+  const disc=parseFloat(document.getElementById('discount').value)||0;
+  const total=sub+tax-disc;
+  const money=n=>sym+Math.round(n).toLocaleString('en');
+
+  const PURPLE=[83,74,183];
+  const CORAL=[232,115,90];
+  const PALE=[247,244,255];
+  const INK=[26,21,48];
+  const MUTED=[136,135,128];
+  const WHITE=[255,255,255];
+  const PBORDER=[206,203,246];
+
+  // ── HEADER ──
+  doc.setFillColor(...PURPLE);
+  doc.rect(0,0,W,52,'F');
+  doc.setFillColor(...CORAL);
+  doc.rect(0,52,W,3,'F');
+
+  doc.setTextColor(...WHITE);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(20);
+  doc.text(document.getElementById('biz-name').value||'Core Digital Tools',M,18);
+
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...PBORDER);
+  doc.text(document.getElementById('biz-email').value,M,26);
+  const bPhone=document.getElementById('biz-phone').value;
+  if(bPhone)doc.text(bPhone,M,32);
+
+  doc.setTextColor(...WHITE);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(24);
+  doc.text('INVOICE',W-M,20,{align:'right'});
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...PBORDER);
+  doc.text(document.getElementById('inv-no').value,W-M,28,{align:'right'});
+
+  const statusColors={unpaid:[186,117,23],paid:[29,158,117],partial:[83,74,183]};
+  const statusBg={unpaid:[250,238,218],paid:[225,245,238],partial:[238,237,254]};
+  const sc=statusColors[invStatus]||statusColors.unpaid;
+  const sb=statusBg[invStatus]||statusBg.unpaid;
+  doc.setFillColor(...sb);
+  doc.roundedRect(W-M-24,34,24,8,2,2,'F');
+  doc.setTextColor(...sc);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(7);
+  doc.text(invStatus.toUpperCase(),W-M-12,39.5,{align:'center'});
+
+  let y=60;
+
+  // ── BILL TO / DETAILS ──
+  doc.setFillColor(...PALE);
+  doc.roundedRect(M,y,82,28,3,3,'F');
+  doc.setTextColor(...CORAL);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(7);
+  doc.text('BILL TO',M+3,y+6);
+  doc.setTextColor(...INK);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(11);
+  doc.text(document.getElementById('cl-name').value||'Client',M+3,y+13);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...MUTED);
+  doc.text(document.getElementById('cl-email').value,M+3,y+19);
+  const clPhone=document.getElementById('cl-phone').value;
+  if(clPhone)doc.text(clPhone,M+3,y+24);
+
+  const rx=W-M-82;
+  doc.setFillColor(...PALE);
+  doc.roundedRect(rx,y,82,28,3,3,'F');
+  const detRow=(lbl,val,dy)=>{
+    doc.setTextColor(...MUTED);doc.setFont('helvetica','normal');doc.setFontSize(7);doc.text(lbl,rx+3,y+dy);
+    doc.setTextColor(...INK);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.text(val,rx+79,y+dy,{align:'right'});
+  };
+  const fmtDate=s=>{if(!s)return'—';const d=new Date(s);return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});};
+  detRow('Invoice Date',fmtDate(document.getElementById('inv-date').value),7);
+  detRow('Due Date',fmtDate(document.getElementById('due-date').value),14);
+  detRow('Invoice No.',document.getElementById('inv-no').value,21);
+
+  y+=34;
+
+  // ── TABLE HEADER ──
+  doc.setFillColor(...PURPLE);
+  doc.rect(M,y,W-2*M,8,'F');
+  doc.setTextColor(...WHITE);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(8);
+  doc.text('Description',M+2,y+5.5);
+  doc.text('Qty',M+95,y+5.5);
+  doc.text('Unit Price',M+108,y+5.5);
+  doc.text('Amount',W-M-2,y+5.5,{align:'right'});
+  y+=8;
+
+  // ── ROWS ──
+  items.forEach((it,idx)=>{
+    const rh=it.notes?16:12;
+    doc.setFillColor(...(idx%2===0?PALE:WHITE));
+    doc.rect(M,y,W-2*M,rh,'F');
+    doc.setFillColor(...CORAL);
+    doc.rect(M,y,1.5,rh,'F');
+    doc.setTextColor(...INK);doc.setFont('helvetica','bold');doc.setFontSize(9);
+    doc.text(it.desc||'Item',M+3,y+5.5);
+    if(it.notes){doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...MUTED);doc.text(it.notes,M+3,y+10.5,{maxWidth:88});}
+    doc.setTextColor(...INK);doc.setFont('helvetica','normal');doc.setFontSize(9);
+    doc.text(String(it.qty),M+96,y+rh/2+1.5);
+    doc.text(money(it.price),M+109,y+rh/2+1.5);
+    doc.setFont('helvetica','bold');
+    doc.text(money(it.total),W-M-2,y+rh/2+1.5,{align:'right'});
+    y+=rh;
+  });
+
+  y+=4;
+  doc.setDrawColor(...PBORDER);
+  doc.setLineWidth(0.3);
+  doc.line(M,y,W-M,y);
+  y+=5;
+
+  // ── TOTALS ──
+  const totRow=(lbl,val)=>{
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...MUTED);
+    doc.text(lbl,W-M-60,y);
+    doc.setFont('helvetica','bold');doc.setTextColor(...INK);
+    doc.text(val,W-M-2,y,{align:'right'});
+    y+=6;
+  };
+  totRow('Subtotal',money(sub));
+  if(tax>0)totRow('Tax',money(tax));
+  if(disc>0)totRow('Discount','-'+money(disc));
+
+  y+=2;
+  doc.setFillColor(...PURPLE);
+  doc.roundedRect(W-M-70,y-2,70,10,2,2,'F');
+  doc.setTextColor(...WHITE);doc.setFont('helvetica','bold');doc.setFontSize(8);
+  doc.text('TOTAL DUE',W-M-36,y+4.5,{align:'center'});
+  doc.setFontSize(11);
+  doc.text(money(total),W-M-2,y+4.5,{align:'right'});
+  y+=14;
+
+  // ── PAYMENT ──
+  doc.setFillColor(...PALE);
+  doc.roundedRect(M,y,W-2*M,22,3,3,'F');
+  doc.setTextColor(...CORAL);doc.setFont('helvetica','bold');doc.setFontSize(7);
+  doc.text('PAYMENT DETAILS',M+3,y+6);
+  doc.setTextColor(...INK);doc.setFont('helvetica','bold');doc.setFontSize(9);
+  doc.text(document.getElementById('pay-inst').value,M+3,y+12);
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...MUTED);
+  doc.text('Please reference invoice '+document.getElementById('inv-no').value+' when paying.',M+3,y+18);
+  y+=27;
+
+  // ── NOTES ──
+  const notes=document.getElementById('notes').value;
+  const terms=document.getElementById('terms').value;
+  if(notes||terms){
+    doc.setTextColor(...CORAL);doc.setFont('helvetica','bold');doc.setFontSize(8);
+    doc.text(notes,M,y);
+    if(terms){doc.setTextColor(...MUTED);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.text(terms,M,y+6,{maxWidth:W-2*M});}
+  }
+
+  // ── FOOTER ──
+  doc.setFillColor(...PURPLE);
+  doc.rect(0,H-10,W,10,'F');
+  doc.setTextColor(...PBORDER);doc.setFont('helvetica','normal');doc.setFontSize(7);
+  const bizName=document.getElementById('biz-name').value;
+  const bizEmail=document.getElementById('biz-email').value;
+  const invNo=document.getElementById('inv-no').value;
+  doc.text(`${bizName}  ·  ${bizEmail}  ·  ${invNo}`,W/2,H-4,{align:'center'});
+
+  const filename=`invoice-${document.getElementById('inv-no').value}.pdf`;
+  doc.save(filename);
+}
+</script>
+</body>
+</html>
