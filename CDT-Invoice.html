@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CDT Invoice Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --pink:#c850c0; --blue:#4158d0;
+  --bg:#0a0a0f; --surface:#13131e; --surface2:#1a1a28;
+  --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.12);
+  --text:#fff; --text2:rgba(255,255,255,0.55); --text3:rgba(255,255,255,0.28);
+  --green:#10b981;
+}
+body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+/* ── EDITOR PANEL ─────────────────────────────────────────────── */
+/* Toggle button */
+#edit-toggle {
+  position:fixed;
+  top:16px; right:16px;
+  z-index:200;
+  background:linear-gradient(135deg,#c850c0,#4158d0);
+  color:#fff;
+  border:none;
+  border-radius:10px;
+  padding:10px 18px;
+  font-family:'DM Sans',sans-serif;
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  box-shadow:0 4px 20px rgba(200,80,192,0.3);
+  transition:all .2s;
+}
+#edit-toggle:hover { opacity:.9; transform:translateY(-1px); }
+
+#editor {
+  background:var(--surface);
+  border-left:1px solid var(--border);
+  width:340px;
+  position:fixed;
+  top:0; right:-340px; bottom:0;
+  overflow-y:auto;
+  padding:24px 20px;
+  z-index:150;
+  transition:right .3s ease;
+  box-shadow:-8px 0 40px rgba(0,0,0,0.5);
+}
+#editor.open { right:0; }
+#editor h2 {
+  font-family:'Syne',sans-serif;
+  font-size:16px;
+  background:linear-gradient(135deg,#c850c0,#4158d0);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  margin-bottom:20px;
+}
+.e-section { margin-bottom:20px; }
+.e-section-title {
+  font-size:9.5px; text-transform:uppercase; letter-spacing:1.5px;
+  color:var(--pink); font-weight:700; margin-bottom:10px;
+  padding-bottom:6px; border-bottom:1px solid var(--border);
+}
+.e-row { display:flex; gap:8px; margin-bottom:8px; }
+.e-group { display:flex; flex-direction:column; gap:4px; flex:1; }
+.e-group label { font-size:10.5px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+.e-group input, .e-group select {
+  background:var(--surface2); border:1px solid var(--border2);
+  color:var(--text); border-radius:7px; padding:8px 10px;
+  font-size:12.5px; font-family:'DM Sans',sans-serif; outline:none;
+  transition:border .2s; width:100%;
+}
+.e-group input:focus, .e-group select:focus { border-color:var(--pink); }
+
+/* Items */
+.item-row {
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:8px; padding:10px; margin-bottom:8px; position:relative;
+}
+.item-row .item-desc-input {
+  width:100%; background:none; border:none; border-bottom:1px solid var(--border);
+  color:var(--text); font-size:12.5px; padding:0 0 6px; margin-bottom:8px;
+  font-family:'DM Sans',sans-serif; outline:none;
+}
+.item-row .item-desc-input::placeholder { color:var(--text3); }
+.item-nums { display:flex; gap:8px; }
+.item-num-group { flex:1; }
+.item-num-group label { font-size:10px; color:var(--text3); display:block; margin-bottom:3px; }
+.item-num-group input {
+  width:100%; background:var(--surface); border:1px solid var(--border);
+  color:var(--text); border-radius:6px; padding:6px 8px;
+  font-size:12px; font-family:'DM Sans',sans-serif; outline:none;
+}
+.item-num-group input:focus { border-color:var(--blue); }
+.del-item {
+  position:absolute; top:8px; right:8px; background:none; border:none;
+  color:var(--text3); cursor:pointer; font-size:16px; line-height:1;
+  transition:color .2s;
+}
+.del-item:hover { color:#f87171; }
+
+.btn-add-item {
+  width:100%; padding:9px; background:none;
+  border:1px dashed var(--border2); border-radius:8px;
+  color:var(--text2); font-size:12.5px; font-family:'DM Sans',sans-serif;
+  cursor:pointer; transition:all .2s; margin-bottom:4px;
+}
+.btn-add-item:hover { border-color:var(--pink); color:var(--pink); }
+
+.action-btns { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+.btn-wa {
+  display:flex; align-items:center; justify-content:center; gap:9px;
+  padding:12px; background:#25d366; color:#fff; border:none;
+  border-radius:10px; cursor:pointer; font-family:'DM Sans',sans-serif;
+  font-size:13.5px; font-weight:700; transition:all .2s;
+}
+.btn-wa:hover { opacity:.88; }
+.btn-pdf {
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:12px; background:var(--surface2); color:var(--text2); border:1px solid var(--border2);
+  border-radius:10px; cursor:pointer; font-family:'DM Sans',sans-serif;
+  font-size:13.5px; font-weight:600; transition:all .2s;
+}
+.btn-pdf:hover { color:var(--text); border-color:var(--text2); }
+
+/* ── PREVIEW ──────────────────────────────────────────────────── */
+#preview-wrap {
+  margin-left:0;
+  padding:40px 32px;
+  min-height:100vh;
+}
+
+#preview {
+  background:#0a0a0f;
+  max-width:720px;
+  margin:0 auto;
+  border:1px solid var(--border);
+  border-radius:16px;
+  overflow:hidden;
+}
+
+.inv-header {
+  padding:36px 44px 28px;
+  display:flex; justify-content:space-between; align-items:flex-start;
+  border-bottom:1px solid var(--border);
+}
+.co-name {
+  font-family:'Syne',sans-serif; font-size:22px; font-weight:800;
+  background:linear-gradient(135deg,#c850c0,#4158d0);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  margin-bottom:4px;
+}
+.co-tag { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:2.5px; margin-bottom:14px; }
+.co-contact { font-size:12px; color:var(--text2); line-height:1.9; }
+.inv-meta { text-align:right; }
+.inv-lbl { font-size:10px; text-transform:uppercase; letter-spacing:3px; color:var(--text3); margin-bottom:8px; }
+.inv-num {
+  font-family:'Syne',sans-serif; font-size:22px; font-weight:800;
+  background:linear-gradient(135deg,#c850c0,#4158d0);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  margin-bottom:10px;
+}
+.inv-dates { font-size:12px; color:var(--text2); line-height:1.9; margin-bottom:10px; }
+.badge {
+  display:inline-block; padding:4px 14px; border-radius:20px;
+  font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px;
+  border:1px solid rgba(200,80,192,0.35); color:#c850c0; background:rgba(200,80,192,0.08);
+}
+.badge-paid { border-color:rgba(16,185,129,0.35); color:#10b981; background:rgba(16,185,129,0.08); }
+
+.inv-body { padding:28px 44px 44px; }
+.info-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:24px;
+  margin-bottom:28px; padding:18px 22px;
+  background:var(--surface); border-radius:12px;
+  border:1px solid var(--border); border-left:3px solid var(--pink);
+}
+.info-lbl { font-size:10px; text-transform:uppercase; letter-spacing:1.5px; color:var(--pink); font-weight:700; margin-bottom:7px; }
+.info-name { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; margin-bottom:3px; }
+.info-val { font-size:12.5px; color:var(--text2); line-height:1.8; }
+
+table { width:100%; border-collapse:collapse; font-size:13px; }
+thead tr { border-bottom:1px solid var(--border); }
+th { color:var(--text3); padding:9px 12px; font-size:9.5px; text-transform:uppercase; letter-spacing:1px; font-weight:600; text-align:left; }
+th:not(:first-child) { text-align:right; }
+tbody tr { border-bottom:1px solid var(--border); }
+tbody tr:last-child { border-bottom:none; }
+td { padding:14px 12px; vertical-align:top; }
+td:not(:first-child) { text-align:right; color:var(--text2); font-size:12.5px; }
+td:last-child { color:var(--text); font-weight:600; }
+.item-name-cell { font-weight:600; margin-bottom:3px; }
+.item-sub-cell { font-size:11.5px; color:var(--text3); }
+
+.divider { height:1px; background:var(--border); margin:20px 0; }
+
+.totals-section { display:flex; justify-content:flex-end; }
+.totals-box { width:240px; }
+.t-row { display:flex; justify-content:space-between; font-size:13px; color:var(--text2); padding:5px 0; border-bottom:1px solid var(--border); }
+.t-row:last-of-type { border-bottom:none; }
+.t-final {
+  display:flex; justify-content:space-between;
+  padding:12px 0 0; font-family:'Syne',sans-serif; font-size:17px; font-weight:800;
+}
+.t-final .amt {
+  background:linear-gradient(135deg,#c850c0,#4158d0);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+
+.payment-box {
+  margin-top:26px; padding:18px 22px;
+  background:var(--surface); border-radius:12px;
+  border:1px solid var(--border); border-left:3px solid var(--blue);
+}
+.payment-lbl { font-size:10px; text-transform:uppercase; letter-spacing:1.5px; color:var(--blue); font-weight:700; margin-bottom:9px; }
+.payment-val { font-size:13.5px; font-weight:500; margin-bottom:4px; }
+.payment-note { font-size:12px; color:var(--text3); margin-top:6px; }
+
+.inv-footer {
+  margin-top:30px; padding-top:20px; border-top:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.footer-msg { font-size:13px; color:var(--text2); }
+.footer-ref { font-size:11px; color:var(--text3); text-align:right; line-height:1.7; }
+
+/* ── PRINT ────────────────────────────────────────────────────── */
+@media print {
+  #editor, #edit-toggle { display:none !important; }
+  #preview-wrap { margin-left:0; padding:0; }
+  #preview { border:none; border-radius:0; max-width:100%; }
+  body { background:#0a0a0f !important; }
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+</style>
+</head>
+<body>
+
+<!-- ── EDITOR ─────────────────────────────────────────────── -->
+<button id="edit-toggle" onclick="toggleEditor()">
+  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+  Edit Invoice
+</button>
+<div id="editor">
+  <!-- Invoice Info -->
+  <div class="e-section">
+    <div class="e-section-title">Invoice Info</div>
+    <div class="e-row">
+      <div class="e-group">
+        <label>Invoice No.</label>
+        <input id="inv-num" value="CDT-2026-001" oninput="update()">
+      </div>
+      <div class="e-group">
+        <label>Status</label>
+        <select id="inv-status" onchange="update()">
+          <option value="unpaid">Unpaid</option>
+          <option value="paid">Paid</option>
+          <option value="partial">Partial</option>
+        </select>
+      </div>
+    </div>
+    <div class="e-row">
+      <div class="e-group">
+        <label>Invoice Date</label>
+        <input id="inv-date" type="date" oninput="update()">
+      </div>
+      <div class="e-group">
+        <label>Due Date</label>
+        <input id="inv-due" type="date" oninput="update()">
+      </div>
+    </div>
+    <div class="e-row">
+      <div class="e-group">
+        <label>Currency</label>
+        <select id="inv-currency" onchange="update()">
+          <option value="UGX">UGX</option>
+          <option value="USD">USD</option>
+          <option value="KES">KES</option>
+          <option value="TZS">TZS</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client -->
+  <div class="e-section">
+    <div class="e-section-title">Client Details</div>
+    <div class="e-group" style="margin-bottom:8px">
+      <label>Client / Company Name</label>
+      <input id="client-name" value="IMC LTD" oninput="update()">
+    </div>
+    <div class="e-group" style="margin-bottom:8px">
+      <label>Email</label>
+      <input id="client-email" value="bukenya@zestsports.store" oninput="update()">
+    </div>
+    <div class="e-group">
+      <label>Phone (optional)</label>
+      <input id="client-phone" placeholder="0701234567" oninput="update()">
+    </div>
+  </div>
+
+  <!-- Items -->
+  <div class="e-section">
+    <div class="e-section-title">Line Items</div>
+    <div id="items-list"></div>
+    <button class="btn-add-item" onclick="addItem()">+ Add Item</button>
+  </div>
+
+  <!-- Payment -->
+  <div class="e-section">
+    <div class="e-section-title">Payment Details</div>
+    <div class="e-group" style="margin-bottom:8px">
+      <label>Payment Method</label>
+      <input id="pay-method" value="MTN Mobile Money" oninput="update()">
+    </div>
+    <div class="e-group">
+      <label>Account / Number</label>
+      <input id="pay-number" value="0765 665 564" oninput="update()">
+    </div>
+  </div>
+
+  <!-- Notes -->
+  <div class="e-section">
+    <div class="e-section-title">Notes (optional)</div>
+    <div class="e-group">
+      <label>Notes</label>
+      <input id="inv-notes" placeholder="Any additional notes..." oninput="update()">
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="action-btns">
+    <button class="btn-wa" onclick="shareWhatsApp()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.136.563 4.14 1.543 5.875L0 24l6.266-1.527A11.953 11.953 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.048-1.395l-.362-.215-3.721.906.949-3.624-.235-.372A9.818 9.818 0 0112 2.182c5.42 0 9.818 4.398 9.818 9.818 0 5.421-4.398 9.818-9.818 9.818z"/></svg>
+      Share on WhatsApp
+    </button>
+    <button class="btn-pdf" onclick="window.print()">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Save / Print as PDF
+    </button>
+  </div>
+</div>
+
+<!-- ── PREVIEW ────────────────────────────────────────────── -->
+<div id="preview-wrap">
+  <div id="preview">
+
+    <div class="inv-header">
+      <div>
+        <div class="co-name">Core Digital Tools</div>
+        <div class="co-tag">Track. Manage. Grow.</div>
+        <div class="co-contact">
+          coredigitaltools@gmail.com<br>
+          0765 665 564
+        </div>
+      </div>
+      <div class="inv-meta">
+        <div class="inv-lbl">Invoice</div>
+        <div class="inv-num" id="p-num">CDT-2026-001</div>
+        <div class="inv-dates" id="p-dates"></div>
+        <span class="badge" id="p-badge">UNPAID</span>
+      </div>
+    </div>
+
+    <div class="inv-body">
+
+      <div class="info-grid">
+        <div>
+          <div class="info-lbl">Bill To</div>
+          <div class="info-name" id="p-client-name">IMC LTD</div>
+          <div class="info-val" id="p-client-contact">bukenya@zestsports.store</div>
+        </div>
+        <div>
+          <div class="info-lbl">Invoice Details</div>
+          <div class="info-val" id="p-inv-detail"></div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th>Qty</th>
+            <th>Unit Price</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody id="p-items"></tbody>
+      </table>
+
+      <div class="divider"></div>
+
+      <div class="totals-section">
+        <div class="totals-box" id="p-totals"></div>
+      </div>
+
+      <div class="payment-box">
+        <div class="payment-lbl">Payment Details</div>
+        <div class="payment-val" id="p-pay-method">MTN Mobile Money: <strong>0765 665 564</strong></div>
+        <div class="payment-note" id="p-pay-note">Please reference invoice CDT-2026-001 when making payment.</div>
+      </div>
+
+      <div id="p-notes-box" style="display:none;margin-top:18px;padding:14px 18px;background:rgba(255,220,100,0.05);border-radius:10px;border-left:3px solid #f59e0b;font-size:12.5px;color:rgba(255,220,100,0.8);font-style:italic"></div>
+
+      <div class="inv-footer">
+        <div class="footer-msg">Thank you for your business.</div>
+        <div class="footer-ref">
+          Core Digital Tools &nbsp;&bull;&nbsp; coredigitaltools@gmail.com<br>
+          &copy; 2026 Core Digital Tools. All rights reserved.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────
+var items = [
+  {desc:'Custom Wallet App Setup', sub:'One-time build, config & deployment', qty:1, price:175000},
+  {desc:'Monthly Support — Month 1', sub:'Bug fixes, updates, onboarding support', qty:1, price:25000},
+  {desc:'Custom Traxo App Setup', sub:'One-time build, config & deployment', qty:1, price:900000}
+];
+
+function fmt(n, cur) {
+  return (cur||'UGX') + ' ' + Number(n||0).toLocaleString();
+}
+
+// ── Render editor items ───────────────────────────────────────
+function renderEditorItems() {
+  var list = document.getElementById('items-list');
+  list.innerHTML = items.map(function(item, i) {
+    return '<div class="item-row">'
+      + '<button class="del-item" onclick="delItem(' + i + ')">&#215;</button>'
+      + '<input class="item-desc-input" placeholder="Item description" value="' + item.desc + '" oninput="items[' + i + '].desc=this.value;update()">'
+      + '<input class="item-desc-input" placeholder="Sub-description (optional)" value="' + (item.sub||'') + '" oninput="items[' + i + '].sub=this.value;update()" style="font-size:11px;color:rgba(255,255,255,0.4)">'
+      + '<div class="item-nums">'
+        + '<div class="item-num-group"><label>Qty</label><input type="number" min="1" value="' + item.qty + '" oninput="items[' + i + '].qty=+this.value||1;update()"></div>'
+        + '<div class="item-num-group"><label>Unit Price</label><input type="number" min="0" value="' + item.price + '" oninput="items[' + i + '].price=+this.value||0;update()"></div>'
+      + '</div>'
+    + '</div>';
+  }).join('');
+}
+
+function addItem() {
+  items.push({desc:'', sub:'', qty:1, price:0});
+  renderEditorItems();
+  update();
+}
+
+function delItem(i) {
+  items.splice(i, 1);
+  renderEditorItems();
+  update();
+}
+
+// ── Update preview ────────────────────────────────────────────
+function update() {
+  var num    = document.getElementById('inv-num').value || 'CDT-2026-001';
+  var status = document.getElementById('inv-status').value;
+  var date   = document.getElementById('inv-date').value;
+  var due    = document.getElementById('inv-due').value;
+  var cur    = document.getElementById('inv-currency').value;
+  var cName  = document.getElementById('client-name').value;
+  var cEmail = document.getElementById('client-email').value;
+  var cPhone = document.getElementById('client-phone').value;
+  var payM   = document.getElementById('pay-method').value;
+  var payN   = document.getElementById('pay-number').value;
+  var notes  = document.getElementById('inv-notes').value;
+
+  // Format date
+  function fmtDate(d) {
+    if (!d) return '—';
+    var parts = d.split('-');
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return parts[2] + ' ' + months[+parts[1]-1] + ' ' + parts[0];
+  }
+
+  // Invoice number
+  document.getElementById('p-num').textContent = num;
+
+  // Dates
+  document.getElementById('p-dates').innerHTML =
+    'Invoice Date: ' + fmtDate(date) + '<br>Due Date: ' + fmtDate(due);
+
+  // Badge
+  var badge = document.getElementById('p-badge');
+  badge.textContent = status.toUpperCase();
+  badge.className = 'badge' + (status === 'paid' ? ' badge-paid' : '');
+
+  // Client
+  document.getElementById('p-client-name').textContent = cName || '—';
+  document.getElementById('p-client-contact').innerHTML =
+    (cEmail ? cEmail + '<br>' : '') + (cPhone || '');
+
+  // Invoice detail
+  document.getElementById('p-inv-detail').innerHTML =
+    'Invoice No: <span style="color:#fff;font-weight:600">' + num + '</span><br>'
+    + 'Date: ' + fmtDate(date) + '<br>'
+    + 'Due: ' + fmtDate(due);
+
+  // Items
+  var subtotal = 0;
+  var rows = items.map(function(item) {
+    var amount = (item.qty || 1) * (item.price || 0);
+    subtotal += amount;
+    return '<tr><td>'
+      + '<div class="item-name-cell">' + (item.desc || '—') + '</div>'
+      + (item.sub ? '<div class="item-sub-cell">' + item.sub + '</div>' : '')
+      + '</td>'
+      + '<td>' + (item.qty || 1) + '</td>'
+      + '<td>' + fmt(item.price, cur) + '</td>'
+      + '<td>' + fmt(amount, cur) + '</td>'
+    + '</tr>';
+  }).join('');
+  document.getElementById('p-items').innerHTML = rows;
+
+  // Totals
+  document.getElementById('p-totals').innerHTML =
+    '<div class="t-row"><span>Subtotal</span><span>' + fmt(subtotal, cur) + '</span></div>'
+    + '<div class="t-final"><span>Total Due</span><span class="amt">' + fmt(subtotal, cur) + '</span></div>';
+
+  // Payment
+  document.getElementById('p-pay-method').innerHTML =
+    payM + ': <strong>' + payN + '</strong>';
+  document.getElementById('p-pay-note').textContent =
+    'Please reference invoice ' + num + ' when making payment.';
+
+  // Notes
+  var nb = document.getElementById('p-notes-box');
+  if (notes) { nb.style.display = 'block'; nb.textContent = notes; }
+  else { nb.style.display = 'none'; }
+}
+
+// ── Toggle editor ────────────────────────────────────────────
+function toggleEditor() {
+  var editor = document.getElementById('editor');
+  var btn = document.getElementById('edit-toggle');
+  editor.classList.toggle('open');
+  btn.innerHTML = editor.classList.contains('open')
+    ? '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Close'
+    : '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit Invoice';
+}
+
+// ── WhatsApp ──────────────────────────────────────────────────
+function shareWhatsApp() {
+  var num   = document.getElementById('inv-num').value;
+  var cName = document.getElementById('client-name').value;
+  var cur   = document.getElementById('inv-currency').value;
+  var payM  = document.getElementById('pay-method').value;
+  var payN  = document.getElementById('pay-number').value;
+
+  var subtotal = items.reduce(function(s,i){ return s + (i.qty||1)*(i.price||0); }, 0);
+
+  var itemLines = items.map(function(i){
+    return '\u2022 ' + i.desc + ' \u2014 ' + fmt((i.qty||1)*(i.price||0), cur);
+  }).join('\n');
+
+  var msg = '*INVOICE \u2014 Core Digital Tools*\n\n'
+    + 'Invoice No: *' + num + '*\n\n'
+    + 'Bill To: *' + cName + '*\n\n'
+    + '*Items:*\n' + itemLines + '\n\n'
+    + '*TOTAL DUE: ' + fmt(subtotal, cur) + '*\n\n'
+    + 'Payment: ' + payM + ' *' + payN + '*\n'
+    + 'Ref: ' + num + '\n\n'
+    + 'Thank you for your business!\n'
+    + '_Core Digital Tools \u2014 coredigitaltools@gmail.com_';
+
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+
+// ── Init ──────────────────────────────────────────────────────
+(function() {
+  // Set today as default invoice date
+  var today = new Date().toISOString().split('T')[0];
+  document.getElementById('inv-date').value = today;
+  renderEditorItems();
+  update();
+})();
+</script>
+</body>
+</html>
